@@ -1,5 +1,5 @@
-/*ESP8622_AP_Stream_MD
-This file streams raw data from the multiDeck. This is an intermediate step file in getting points from the environment to a user interface device.
+/*ESP8622_AP_Stream_PC
+This file streams points in 2D related to the location of the sensor package
 
 */
 
@@ -23,15 +23,18 @@ const char *password = APPSK;
 
 //Server Setup
 String line; // empty string to store the line to send to the server
-
+int counter;
 ESP8266WebServer server(80);
 void handleRoot() {
-  server.send(200, "text/html", "Sensor Data: " + line);
-  line = ""; //clear the line  
+  // server.send(200, "text/html", line);
+  // line = ""; //clear the line  
+  server.send(200, "text/html", String(counter));
+  counter = 0;
 }
 
 //Sensor Setup
 #include "multiDeck.h"
+#include <Kalman.h>
 
 void setup() {
   delay(1000);
@@ -50,30 +53,44 @@ void setup() {
 
   //Initialize the mutlideck
   CFMultiDeck_init();
+  Serial.println("Sensor initialization successful");
   
 }
 
+int wth = 0;
+int last = 0;
 
 void loop() {
+  // server.handleClient();
+  if(millis()> wth+100){
+    // Serial.println(counter);
+    // counter = 0;
   server.handleClient();
+  wth = millis();
+  }
+
   
-  //Refresh sensor data
-  multiDeck_refresh();
-  delay(10);
+  //Refresh sensor> data
+  if(millis() > last + 10){ //don't constantly bug the distance sensors.
+    multiDeck_refresh(); 
+    last = millis();
+  }
+  
+  // delay(1);
   
   //Convert the sensor data to a string to send to the server
 
   for(int i = 0; i < 4; i++){
     if(MD_dist[i] !=0){
-      line = line + String(MD_dist[i]);
-      line = line + ", ";
+      counter++;
+      // line = line + String(MD_dist[i]);
+      // line = line + ",";
     }      
   } 
-  if(MD_dist[4]!=0){   
-    line = line + String(MD_dist[5]);
+  if(MD_dist[4]!=0){  
+    counter++;
+    // line = line + String(MD_dist[5]);
   }
-  Serial.println(line);
-
-  // server.send(200, "text/html", line);
+  
 
 }

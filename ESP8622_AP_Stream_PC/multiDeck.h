@@ -11,7 +11,7 @@ Description:  This file contains functions to initialize the crazyflie deck at a
 #include "SparkFun_VL53L1X.h"   //Sparkfun's distance sensor library
 #include <Wire.h>
 
-int MD_dist[5] = {0, 0, 0, 0, 0};//array of distances. Will be a 0 if there isn't any data for that sensor. Updated by multiDeck_refresh()
+float MD_dist[5] = {0, 0, 0, 0, 0};//array of distances. Will be a 0 if there isn't any data for that sensor. Updated by multiDeck_refresh()
 
 //PCA9534 I/O Extender Registers:
   #define PCA_IN 0x00   //input register (not used)
@@ -39,7 +39,7 @@ int MD_dist[5] = {0, 0, 0, 0, 0};//array of distances. Will be a 0 if there isn'
   //Not used        0b010000000
   //Not used        0b100000000
 
-void PCASetSensor(byte sensor){//Function to activate the selected sensor through the PCA chip
+void PCASetSensor(byte sensor){//Function to activate the selected sensor(s) through the PCA chip
   Wire.beginTransmission(PCA_ADDR + 0); //Begin communication in write mode
   Wire.write(PCA_OUT);                  //Tell the PCA to change output pin levels
   Wire.write(sensor);                   //Activate the pin(s) coresponding to the desired sensor(s)
@@ -58,7 +58,7 @@ SFEVL53L1X dist_sensor[5]; //Create an array of distance sensors.
 
 void CFMultiDeck_init(){ //Initialize all hardware on the CF Multi range deck. 
     Wire.begin();
-    int PCAPins[] = {up, back, Right, Front, Left};
+    int PCAPins[] = {up, back, Right, Front, Left}; //array of pin assignments for the PCA
 
   //Initialize PCA9534 MUX
     Wire.beginTransmission(PCA_ADDR + 0);
@@ -70,7 +70,8 @@ void CFMultiDeck_init(){ //Initialize all hardware on the CF Multi range deck.
   //Initialize sensor array:
     Serial.println("Initializing Sensors:");
     int active = 0;   
-     
+
+    PCASetSensor(0x00); //reset all sensors - this prevents errors if the MCU is reset but the sensor array is not.
     for(int i = 0; i <5; i++){
       active += PCAPins[i]; //leave all initialized sensors active
       PCASetSensor(active); //activate next sensor

@@ -5,27 +5,29 @@ import numpy as np
 import pandas as pd
 import controlers as ctrl
 import matplotlib.pyplot as plt
+import time as tm
+import RANSAC as RS
+import random
 
 import ClydeBldgLayout as bld
 
 import warnings
 
-warnings.simplefilter('ignore', np.RankWarning)
+warnings.simplefilter('ignore', np.RankWarning) #RANSAC keeps triggering warnings from numpy's polyfit program. They are usually resolved after the 2nd iteration.
 
 
-dataset = pd.read_excel("Dataset 2.xlsx","Sheet1")
-print(dataset.columns)
+#Import the dataset
+dataset = pd.read_excel("Dataset 2.xlsx","Sheet5")
+# print(dataset.columns)
 
-#Relavant readings (constant speed model)
-
-#Pull time, readings are in ns
+#Relavant sensor data (constant speed model)
+#Time, readings are in ns
 time = np.asarray(dataset["time"],float)
 time*=1e-9 #Convert to s
-
-t0 = time[0]
+t0 = time[0] #Save initial time
 
 #Sensor readings:
-#  Determine the sensor configuration, display in terminal and store in arrays for analysis
+#  Determine the sensor configuration, display in terminal and store sensor data in arrays for analysis
 print("Sensor Configuration:")
 try:
     D0 = np.asarray(dataset["D0"],float)
@@ -69,7 +71,7 @@ except:
     pass
 
 
-#Sensor relative vectors:
+#Angles that the sensors are pointing relative to the module
 def deg2rad(angle):
     return angle * np.pi/180
 a0 = deg2rad(45)
@@ -81,6 +83,7 @@ a5 = deg2rad(-90)
 a6 = deg2rad(-60)
 a7 = deg2rad(-45)
 
+#Unit vectors for the sensor orientations
 v0 = np.array([np.cos(a0),np.sin(a0)])
 v1 = np.array([np.cos(a1),np.sin(a1)])
 v2 = np.array([np.cos(a2),np.sin(a2)])
@@ -95,6 +98,7 @@ v7 = np.array([np.cos(a7),np.sin(a7)])
 
 #Most simple: Constant speed: No acceleration
 
+#Find the constant speed based on the known distance traveled vs time. In the final product, this will be a constant
 speed = 82/(time[-1]-time[0])
 x = [] #array to store location
 x.append(0)
@@ -102,12 +106,20 @@ x.append(0)
 t = [0] #array to store time
 points = [[], [], [], [], [], [], [],[]] #List of lists to store sensor data
 
-#Find 
-threshold = 90
-delta_thresh = 30
+
+#Two variables for eliminating out of range sensor readings
+threshold = 90 #Minimum distance walls must be
+delta_thresh = 30 #Maximum variation between sensor readings
+
+
 for i in range(1,np.size(time)):
+    #Estimate and store position
     x.append(x[-1] + speed*(time[i]-time[i-1]))
+    #Calculate and store elapsed time
     t.append(time[i]-time[0])
+
+    #Convert sensor readings to data points, eliminating the out of range measurements
+    #In try statements to allow sensor configurations to change without having to modify code
     try:
         if(D0[i] > threshold and abs(D0[i-1]-D0[i]) < delta_thresh):
             points[0].append(D0[i]*v0*1e-2+ np.array([x[i],0])) #Lots of errors
@@ -149,47 +161,60 @@ for i in range(1,np.size(time)):
     except:
         pass
 
+
+#Show the resulting sensor data superimposed on the hallway
+#Display all sensor data together, and each sensor's data individually
 plt.clf()
-ax = plt.subplot(8,1,1)
-
-for j in bld.walls:
-    bld.plot_wall(j)
-for j in bld.doors:
-    bld.plot_door(j)
-for j in bld.other:
-    bld.plot_other(j)
-
-
+# ax = plt.subplot(9,1,1)
 allpoints = []
-for i in range(0,8):
-    axi = plt.subplot(9,1,i+2)
+for i in points:
+    allpoints = allpoints + i
 
-    points_array = np.array(points[i])
+
+
+# for j in bld.walls:
+#     bld.plot_wall(j)
+# for j in bld.doors:
+#     bld.plot_door(j)
+# for j in bld.other:
+#     bld.plot_other(j)
+# allpoints = np.array(allpoints)
+
+# plt.scatter(allpoints[:,0],allpoints[:,1], s=2, color = "g")
+# plt.show()
+
+
+
+# allpoints = []
+# for i in range(0,8):
+#     axi = plt.subplot(9,1,i+2)
+
+#     points_array = np.array(points[i])
     
-    allpoints.extend(points[i])
-    for j in bld.walls:
-        bld.plot_wall(j)
-    for j in bld.doors:
-        bld.plot_door(j)
-    for j in bld.other:
-        bld.plot_other(j)
+#     allpoints.extend(points[i])
+#     for j in bld.walls:
+#         bld.plot_wall(j)
+#     for j in bld.doors:
+#         bld.plot_door(j)
+#     for j in bld.other:
+#         bld.plot_other(j)
 
-    # plt.plot([0,x[-1]],[0,0])
-    try:
-        ax.scatter(points_array[:,0],points_array[:,1], s = 2, color = "g")
-        axi.scatter(points_array[:,0],points_array[:,1], s = 2, color = "g")
-    except:
-        pass
-    axi.set_ylabel("D"+str(i))
-    # axi.set_ybound(-2.5, 2)
+#     # plt.plot([0,x[-1]],[0,0])
+#     try:
+#         ax.scatter(points_array[:,0],points_array[:,1], s = 2, color = "g")
+#         axi.scatter(points_array[:,0],points_array[:,1], s = 2, color = "g")
+#     except:
+#         pass
+#     axi.set_ylabel("D"+str(i))
+#     axi.set_ybound(-2.5, 2)
 
-ax.set_ylabel("All")
+# ax.set_ylabel("All")
 # ax.set_ybound(-2.5,2)
 
 
-plt.show()
+# plt.show()
 
-# print(allpoints)
+
 
 #sudo code for finding wall segments:
 #Test in 1m blocks measured in x
@@ -202,80 +227,81 @@ plt.show()
 #-if number of outliers is under a threshold end process, else store outliers for next round
 #-Return the x values for the largest and smallest x values in the inlier group
 
+#Time how long RANSAC algorithm takes
+start = tm.time()
+#List of regressed segments
 segments = []
+
+#Current value of X to base the "window" around
 x_current = 0
+
+#Allow some weirdness in not all data points being removed
 while len(allpoints)>20:
     #RANSAC parameters:
-    max_error = .2
+    threshold = .3          #Max allowable error to be considered an inlier
     inlier_thresh = 5
     outlier_thresh = 5
+    ratio = .9
 
     RANSAC_points = []
     
     #Shift points from allpoints into RANSAC category
     l_initial = len(allpoints)
     for i in range(len(allpoints)):
-        
         try:
-            if(allpoints[l_initial-i][0]>x_current-1 and allpoints[l_initial-i][0]<x_current+1):
+            if(allpoints[l_initial-i][0]>x_current-1 and allpoints[l_initial-i][0]<x_current+1): #Can try using sort algorithm to cut time here
                 RANSAC_points.append(allpoints.pop(l_initial-i))
                 # print()
         except:
             pass
-    # print(len(RANSAC_points), "\t", len(allpoints), "\t", x_current-1, "\t", x_current + 1)
-    
 
 
     #RANSAC
-    inliers = []
-    outliers = []
-    rng = np.random.default_rng()
-    for i in range(50): #time out after 100 attempts
-        #randomly assign points:
+    for i in range(50): #time out after a large number of attempts
         if(i==48):
-            print("WARNING: TOO MANY ATTEMPTS")
-        outliers =[]
-        inliers = []
-        # print(len(RANSAC_points))
-        for element in RANSAC_points:
-            if rng.random() > .9:
-                inliers.append(element)
-            else:
-                outliers.append(element)
-        # print(len(inliers), "\t", len(outliers))
-
+            print("WARNING: TOO MANY ATTEMPTS")#show warning if there have been too many iterations
+        
+        #Scramble RANSAC list
+        random.shuffle(RANSAC_points)
+        
+        #Cut RANSAC list based on the ratio of points specified
+        cut = int(len(RANSAC_points)*ratio)
+        inliers = RANSAC_points[0:cut]
+        outliers =RANSAC_points[cut:len(RANSAC_points)]
         
 
         n_changes = 100
         while(n_changes>0):
             
             #linear regression on inliers
+            #Make inliers into an array so numpy can understand it
             tmp = np.array(inliers)
-            if(len(tmp) < 1):
+            if(len(inliers) < 1):
                 break
             a = np.polyfit(tmp[:,0],tmp[:,1],1)
-            # print(a,"\t",b)
+            
 
             # Process visualization
-            plt.clf()
-            try:
-                plt.scatter(np.array(inliers)[:,0], np.array(inliers)[:,1], color = "b", label = "Inliers")
-            except:
-                pass
-            try:
-                plt.scatter(np.array(outliers)[:,0], np.array(outliers)[:,1], color = "r", label = "Outliers")
-            except:
-                pass
-            plt.plot([x_current-1, x_current+1],[(x_current-1)*a[0] + a[1], (x_current+1)*a[0] + a[1]], label = "Regressed Line")
-            plt.ylim([-1.6, 1.6])
-            plt.axis("off")
-            plt.legend()
-            plt.draw()
-            plt.pause(.0001)
+            # plt.clf()
+            # try:
+            #     plt.scatter(np.array(inliers)[:,0], np.array(inliers)[:,1], color = "b", label = "Inliers")
+            # except:
+            #     pass
+            # try:
+            #     plt.scatter(np.array(outliers)[:,0], np.array(outliers)[:,1], color = "r", label = "Outliers")
+            # except:
+            #     pass
+            # plt.plot([x_current-1, x_current+1],[(x_current-1)*a[0] + a[1], (x_current+1)*a[0] + a[1]], label = "Regressed Line")
+            # plt.ylim([-1.6, 1.6])
+            # plt.axis("off")
+            # plt.legend()
+            # # plt.draw()
+            # # plt.pause(.0001)
+            
+            #Re-sort the points based on their proximity to the regression line and count the changes made.
             n_changes = 0
             
             l_initial=len(inliers)
-            threshold = .3 #max distance allowed between regressed line and inliers
             for i in range(len(inliers)):
                 try:
                     if abs(inliers[l_initial-i][0]*a[0]+a[1] - inliers[l_initial-i][1])>threshold:
@@ -283,6 +309,7 @@ while len(allpoints)>20:
                         outliers.append(inliers.pop(l_initial-i))
                 except:
                     pass
+            l_initial=len(outliers)
             for i in range(len(outliers)):
                 try:
                     if abs(outliers[l_initial-i][0]*a[0]+a[1] - outliers[l_initial-i][1])<threshold:
@@ -290,74 +317,30 @@ while len(allpoints)>20:
                         inliers.append(outliers.pop(l_initial-i))
                 except:
                     pass
-        # [[x1,x2],[y1,y2]]
+        
+
         if len(inliers) > len(outliers)/2:
             #if there are a significant number of inliers, accept the segment
             #Find the segment points
             xs = np.array([min(np.array(inliers)[:,0]),max(np.array(inliers)[:,0])])
             ys = xs*a[0] + a[1]
-            segments.append([xs, ys])
+
+            # [[x1,x2],[y1,y2]]
+            segments.append([xs, ys]) #This line is wrong
             #remove the inliers from the RANSAC points
             RANSAC_points = outliers
-            #reset out and inliers lists
             
+        #if there aren't many data points left, break    
         if(len(outliers) < 10):
             break
 
 
 
 
-
+    #Increment to the next dataset
 
     x_current+=2
     
     
-    
-
-        
-    
-
-
-
-
-
-# # #Observer Setup:
-# tr = 100
-# z = .707
-# wn = 2.2/tr
-# dist_Pole = np.array([-1.5])
-# wn*=10
-# poles = np.roots(np.convolve([1, 2*z*wn, wn**2], np.poly(dist_Pole)))
-# A = np.array([[0,1,0],
-#               [0,0,1],
-#               [0,0,0]])
-# B = np.array([[0],[0],[0]])
-# C = np.array([[1,0,0]])
-# D = np.array([[0,0,0]])
-
-# filter = ctrl.Observer(A, B, C, D, poles, Ts = .001, t_old = t0)
-# # filter.x_hat[1] = 80/(time[-1]-time[0])
-# print(filter.x_hat)
-
-
-
-# for i in range(np.size(Ax)):
-#     ym = Ax[i]
-#     F = 0
-#     T = time[i]
-#     t.append(time[i])
-#     obs = (filter.updateObserver(y_m=ym, F=F, T=T))
-#     x.append(obs.item(0))
-#     x_dot.append(obs.item(1))
-#     x_dd.append(obs.item(2))
-#     plt.clf()
-#     plt.plot(t,x, label = "position")
-#     plt.plot(t, x_dot, label = "speed")
-#     plt.plot(t, x_dd, label = "acceleration")
-#     plt.legend()
-#     plt.draw()
-#     plt.pause(0.01)
-
-# print(np.size(x))
-# # plt.plot(x)
-# plt.show()
+finish = tm.time()
+print("RANSAC Elapsed time: ", finish-start) 

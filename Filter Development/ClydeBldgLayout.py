@@ -62,7 +62,7 @@ walls.append(trace_left.update([0,3]))
 doors.append(trace_left.update([0,3]))
 walls.append(trace_left.update([0,17]))
 
-print(trace_left.corner)
+# print(trace_left.corner)
 
 #Right Side
 trace_righta = wall(np.array([10.5,0]))
@@ -122,7 +122,7 @@ walls.append(trace_rf.update([0,19]))
 doors.append(trace_rf.update([0,3]))
 walls.append(trace_rf.update([0,3.1]))
 doors.append(trace_rf.update([0,4]))
-print(trace_left.corner -trace_rf.corner)
+# print(trace_left.corner -trace_rf.corner)
 walls.append(trace_rf.update([0,15.3]))
 
 

@@ -9,11 +9,13 @@ warnings.simplefilter('ignore', np.RankWarning) #RANSAC keeps triggering warning
 
 
 def plot_segment(segment):
+    '''Function to plot the line segments'''
     plt.plot(segment.T[0], segment.T[1], color = "k")
 
 def sort_points(data, index = 0):
     '''Sort a list of points (as numpy arrays) based on the x y or z coordinate \n
-    Use 0 for x, 1 for y and 2 for z'''
+    data: Data to sort, list of 2 or 3 member numpy arrays\n
+    index: Use 0 for x, 1 for y and 2 for z'''
     
     #If there is only one point left in the dataset, return the point
     if len(data) <= 1:
@@ -21,10 +23,10 @@ def sort_points(data, index = 0):
     
     #If there are multiple points in the dataset, sort them
     else:
-        #cut the dataset into 2 equal, or nearly equal for an odd number of members, sets
+        #Find the index required to cut the data into 2 equal or nearly equal sets
         cut = int(len(data)/2)
         
-        #Sort the two list using this function recursively
+        #Cut and sort the two list using this function recursively
         set1 = sort_points(data[0:cut], index)
         set2 = sort_points(data[cut:len(data)], index)
 
@@ -137,15 +139,19 @@ def RANSAC_basic_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5):
             #if there are a significant number of inliers, accept the segment
             return a, inliers, outliers
         
+    #if time out
+    #will need to address this error case in final version of code
+    TimeoutError
+        
 def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = .5, leftovers = 20):
     ''''Run Random Sample Consensus on a set of data points, and extract line segments\n
-    This function will return a list of line segments in the form [[[x1, y1],[x2, y2]]...]\n
-    RANSAC_points: A list of numpy arrays in the form [[x1,y1],[x2,y2]...]\n
+    This function will return a list of line segments in the form [array([[x1, y1],[x2, y2]]),...]\n
+    RANSAC_points: A list of numpy arrays in the form [array([x1,y1]),array([x2,y2])...]\n
     threshold: Maximum distance allowed between datapoints and the regressed line in defining new inliers\n
-    ratio: number of points in the inlier vs the outlier group\n
+    ratio: number of points in the inlier vs the outlier group in the initla iteration\n
     gap: distance between points that is considered a gap\n
     acceptance_ratio: minimum ratio of inliers/outliers required to accept the line\n
-    leftovers: The number of points that don't belong to a line segment'''
+    leftovers: The maximum number of outliers in the final iteration. A set of outliers larger than this number will triger a loop'''
     segments = [] #list to store the line segments
     while(len(RANSAC_points) > leftovers):
         #Run RANSAC 
@@ -156,7 +162,7 @@ def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = 
         
         
         #Sort the inlier group based on x values for shallow slopes, and y values for steep slopes
-        if(abs(a[1])<1):
+        if(abs(a[1])<2):
             index = 0
         else:
             index = 1

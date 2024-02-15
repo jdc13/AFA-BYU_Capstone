@@ -22,7 +22,7 @@ ratio = .9
 gap = .2
 acceptance_ratio = .6
 leftovers = 10
-x_step = 10
+x_step = 20
 
 #Relavant sensor data (constant speed model)
 #Time, readings are in ns

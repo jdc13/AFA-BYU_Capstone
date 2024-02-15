@@ -11,14 +11,18 @@ import random
 
 import ClydeBldgLayout as bld
 
-import warnings
-
-warnings.simplefilter('ignore', np.RankWarning) #RANSAC keeps triggering warnings from numpy's polyfit program. They are usually resolved after the 2nd iteration.
 
 
 #Import the dataset
-dataset = pd.read_excel("Dataset 2.xlsx","Sheet5")
+dataset = pd.read_excel("Dataset 2.xlsx","Sheet9")
 # print(dataset.columns)
+#RANSAC parameters
+threshold_r = .5
+ratio = .9
+gap = .2
+acceptance_ratio = .6
+leftovers = 10
+x_step = 10
 
 #Relavant sensor data (constant speed model)
 #Time, readings are in ns
@@ -166,12 +170,11 @@ for i in range(1,np.size(time)):
 #Display all sensor data together, and each sensor's data individually
 plt.clf()
 # ax = plt.subplot(9,1,1)
-allpoints = []
-for i in points:
-    allpoints = allpoints + i
+left_bank  = RS.sort_points(points[0] + points[1] + points[2] + points[3])
+right_bank = RS.sort_points(points[4] + points[5] + points[6] + points[7])
 
 
-
+allpoints = left_bank + right_bank
 # for j in bld.walls:
 #     bld.plot_wall(j)
 # for j in bld.doors:
@@ -235,112 +238,120 @@ segments = []
 #Current value of X to base the "window" around
 x_current = 0
 
-#Allow some weirdness in not all data points being removed
-while len(allpoints)>20:
-    #RANSAC parameters:
-    threshold = .3          #Max allowable error to be considered an inlier
-    inlier_thresh = 5
-    outlier_thresh = 5
-    ratio = .9
 
+#Allow some weirdness in not all data points being removed
+while len(right_bank)>20:
     RANSAC_points = []
     
-    #Shift points from allpoints into RANSAC category
-    l_initial = len(allpoints)
-    for i in range(len(allpoints)):
+    #Shift points from right_bank into RANSAC category
+    l_initial = len(right_bank)
+    for i in range(len(right_bank)):
         try:
-            if(allpoints[l_initial-i][0]>x_current-1 and allpoints[l_initial-i][0]<x_current+1): #Can try using sort algorithm to cut time here
-                RANSAC_points.append(allpoints.pop(l_initial-i))
+            if(right_bank[l_initial-i][0]>x_current-x_step/2 
+               and 
+               right_bank[l_initial-i][0]<x_current+x_step/2): #Can try using sort algorithm to cut time here
+                RANSAC_points.append(right_bank.pop(l_initial-i))
                 # print()
         except:
             pass
 
+    segments = segments + RS.RANSAC_Segments_2D(RANSAC_points, 
+                                                threshold_r,
+                                                ratio,
+                                                gap,
+                                                acceptance_ratio,
+                                                leftovers)
 
-    #RANSAC
-    for i in range(50): #time out after a large number of attempts
-        if(i==48):
-            print("WARNING: TOO MANY ATTEMPTS")#show warning if there have been too many iterations
-        
-        #Scramble RANSAC list
-        random.shuffle(RANSAC_points)
-        
-        #Cut RANSAC list based on the ratio of points specified
-        cut = int(len(RANSAC_points)*ratio)
-        inliers = RANSAC_points[0:cut]
-        outliers =RANSAC_points[cut:len(RANSAC_points)]
-        
+    # print(len(segments), "\t", len(right_bank))
 
-        n_changes = 100
-        while(n_changes>0):
+    # for i in segments:
+    #     RS.plot_segment(i)
+
+    # plt.draw()
+    # plt.pause(.25)
+
+#  # [[x1,x2],[y1,y2]]
+#             segments.append([xs, ys]) #This line is wrong
+#             #remove the inliers from the RANSAC points
+#             RANSAC_points = outliers
             
-            #linear regression on inliers
-            #Make inliers into an array so numpy can understand it
-            tmp = np.array(inliers)
-            if(len(inliers) < 1):
-                break
-            a = np.polyfit(tmp[:,0],tmp[:,1],1)
-            
+#         #if there aren't many data points left, break    
+#         if(len(outliers) < 10):
+#             break
 
-            # Process visualization
-            # plt.clf()
-            # try:
-            #     plt.scatter(np.array(inliers)[:,0], np.array(inliers)[:,1], color = "b", label = "Inliers")
-            # except:
-            #     pass
-            # try:
-            #     plt.scatter(np.array(outliers)[:,0], np.array(outliers)[:,1], color = "r", label = "Outliers")
-            # except:
-            #     pass
-            # plt.plot([x_current-1, x_current+1],[(x_current-1)*a[0] + a[1], (x_current+1)*a[0] + a[1]], label = "Regressed Line")
-            # plt.ylim([-1.6, 1.6])
-            # plt.axis("off")
-            # plt.legend()
-            # # plt.draw()
-            # # plt.pause(.0001)
-            
-            #Re-sort the points based on their proximity to the regression line and count the changes made.
-            n_changes = 0
-            
-            l_initial=len(inliers)
-            for i in range(len(inliers)):
-                try:
-                    if abs(inliers[l_initial-i][0]*a[0]+a[1] - inliers[l_initial-i][1])>threshold:
-                        n_changes = n_changes+1
-                        outliers.append(inliers.pop(l_initial-i))
-                except:
-                    pass
-            l_initial=len(outliers)
-            for i in range(len(outliers)):
-                try:
-                    if abs(outliers[l_initial-i][0]*a[0]+a[1] - outliers[l_initial-i][1])<threshold:
-                        n_changes = n_changes+1
-                        inliers.append(outliers.pop(l_initial-i))
-                except:
-                    pass
-        
-
-        if len(inliers) > len(outliers)/2:
-            #if there are a significant number of inliers, accept the segment
-            #Find the segment points
-            xs = np.array([min(np.array(inliers)[:,0]),max(np.array(inliers)[:,0])])
-            ys = xs*a[0] + a[1]
-
-            # [[x1,x2],[y1,y2]]
-            segments.append([xs, ys]) #This line is wrong
-            #remove the inliers from the RANSAC points
-            RANSAC_points = outliers
-            
-        #if there aren't many data points left, break    
-        if(len(outliers) < 10):
-            break
-
-
-
-
+#Find the segment points
+            # xs = np.array([min(np.array(inliers)[:,0]),max(np.array(inliers)[:,0])])
+            # ys = xs*a[0] + a[1]
     #Increment to the next dataset
 
-    x_current+=2
+    x_current+=x_step
     
+x_current = 0
+
+#Allow some weirdness in not all data points being removed
+while len(left_bank)>20:
+    RANSAC_points = []
     
+    #Shift points from right_bank into RANSAC category
+    l_initial = len(left_bank)
+    for i in range(len(left_bank)):
+        try:
+            if(left_bank[l_initial-i][0]>x_current-x_step/2 
+               and 
+               left_bank[l_initial-i][0]<x_current+x_step/2): #Can try using sort algorithm to cut time here
+                RANSAC_points.append(left_bank.pop(l_initial-i))
+                # print()
+        except:
+            pass
+
+    segments = segments + RS.RANSAC_Segments_2D(RANSAC_points, 
+                                                threshold_r,
+                                                ratio,
+                                                gap ,
+                                                acceptance_ratio,
+                                                leftovers)
+
+    # print(len(segments), "\t", len(left_bank))
+
+    # for i in segments:
+    #     RS.plot_segment(i)
+
+    # plt.draw()
+    # plt.pause(.25)
+
+#  # [[x1,x2],[y1,y2]]
+#             segments.append([xs, ys]) #This line is wrong
+#             #remove the inliers from the RANSAC points
+#             RANSAC_points = outliers
+            
+#         #if there aren't many data points left, break    
+#         if(len(outliers) < 10):
+#             break
+
+#Find the segment points
+            # xs = np.array([min(np.array(inliers)[:,0]),max(np.array(inliers)[:,0])])
+            # ys = xs*a[0] + a[1]
+    #Increment to the next dataset
+
+    x_current+=x_step
 finish = tm.time()
+
+allpoints = np.array(allpoints)
+plt.scatter(allpoints[:,0],allpoints[:,1], s=2, color = "g")
+for i in segments:
+    RS.plot_segment(i)
+
+for i in bld.walls:
+    bld.plot_wall(i)
+for i in bld.other:
+    bld.plot_wall(i)
+for i in bld.doors:
+    bld.plot_door(i)
+
+
+# ax.set_ybound(-2.5,2)
+plt.ylim([-2.5, 2])
+plt.show()
+
+
 print("RANSAC Elapsed time: ", finish-start) 

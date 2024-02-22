@@ -100,6 +100,7 @@ v7 = np.array([np.cos(a7),np.sin(a7)])
 
 
 
+
 #Most simple: Constant speed: No acceleration
 
 #Find the constant speed based on the known distance traveled vs time. In the final product, this will be a constant

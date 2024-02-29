@@ -20,8 +20,9 @@ tca = adafruit_tca9548a.TCA9548A(i2c)
 vl53 = adafruit_vl53l4cd.VL53L4CD(tca[0])
 
 # OPTIONAL: can set non-default values
-vl53.inter_measurement = 0
-vl53.timing_budget = 200
+vl53.timing_budget = 17
+vl53.inter_measurement = 20
+
 
 print("VL53L4CD Simple Test.")
 print("--------------------")

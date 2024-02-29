@@ -79,11 +79,11 @@ def dist_setup():
     for i in range(8):
         try:
             vl53 = adafruit_vl53l4cd.VL53L4CD(MUX[i])
-            DIST.append(vl53)
-            vl53.inter_measurement = 0
-            vl53.timing_budget = 11
-            vl53.start_ranging()
             
+            vl53.timing_budget = 17
+            vl53.inter_measurement = 20            
+            vl53.start_ranging()
+            DIST.append(vl53)            
             header.append( "D" + str(i))
         except:
             print("Sensor ", i, " not connected")
@@ -163,15 +163,15 @@ while True:
         
         
             write_SD_line(line)
-            print(line)
+#             print(line)
             #Break and close the file if the package is upside down
             if(line[3] < -5):
                 break
                 
                         
-        print("Program finished")
-        pix.fill((0,0,255))
-        file +=1
-        while bno.acceleration[2] < 5:
-            pass
+    print("Program finished")
+    pix.fill((0,0,255))
+    file +=1
+    while bno.acceleration[2] < 5:
+        pass
 

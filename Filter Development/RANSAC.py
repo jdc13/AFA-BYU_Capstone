@@ -37,7 +37,7 @@ def sort_points(data, index = 0):
         #append the smaller of the two sets to the sorted list, and remove it from its set
         #repeat this process until one of the lists is empty
         while len(set1)>0 and len(set2)>0:
-            if(set1[0][index] < set2[0][index]):
+            if(set1[0].item(index) < set2[0].item(index)):
                 sorted.append(set1.pop(0))
             else:
                 sorted.append(set2.pop(0))

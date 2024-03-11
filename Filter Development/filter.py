@@ -7,20 +7,15 @@ import controlers as ctrl
 import matplotlib.pyplot as plt
 import time as tm
 import RANSAC as RS
-import random
-
 import warnings
 
 warnings.filterwarnings("ignore")
 
 import ClydeBldgLayout as bld
 
-
-
-
 #Import the dataset
 dataset = pd.read_excel("Dataset 2.xlsx","Sheet1")
-# print(dataset.columns)
+
 #RANSAC parameters          Best Tested Value
 threshold_r = 1             #1m
 ratio = .8                  #.8
@@ -29,7 +24,6 @@ acceptance_ratio = .7       #.7
 leftovers = 10              #10
 x_step = 20                 #20
 
-#Relavant sensor data (constant speed model)
 #Time, readings are in ns
 time = np.asarray(dataset["time"],float)
 time*=1e-9 #Convert to s
@@ -102,12 +96,7 @@ v5 = np.array([np.cos(a5),np.sin(a5)])
 v6 = np.array([np.cos(a6),np.sin(a6)])
 v7 = np.array([np.cos(a7),np.sin(a7)])
 
-
-
-
-
 #Most simple: Constant speed: No acceleration
-
 #Find the constant speed based on the known distance traveled vs time. In the final product, this will be a constant
 speed = 82/(time[-1]-time[0])
 x = [] #array to store location
@@ -181,49 +170,6 @@ right_bank = RS.sort_points(points[4] + points[5] + points[6] + points[7])
 
 
 allpoints = left_bank + right_bank
-# for j in bld.walls:
-#     bld.plot_wall(j)
-# for j in bld.doors:
-#     bld.plot_door(j)
-# for j in bld.other:
-#     bld.plot_other(j)
-# allpoints = np.array(allpoints)
-
-# plt.scatter(allpoints[:,0],allpoints[:,1], s=2, color = "g")
-# plt.show()
-
-
-
-# allpoints = []
-# for i in range(0,8):
-#     axi = plt.subplot(9,1,i+2)
-
-#     points_array = np.array(points[i])
-    
-#     allpoints.extend(points[i])
-#     for j in bld.walls:
-#         bld.plot_wall(j)
-#     for j in bld.doors:
-#         bld.plot_door(j)
-#     for j in bld.other:
-#         bld.plot_other(j)
-
-#     # plt.plot([0,x[-1]],[0,0])
-#     try:
-#         ax.scatter(points_array[:,0],points_array[:,1], s = 2, color = "g")
-#         axi.scatter(points_array[:,0],points_array[:,1], s = 2, color = "g")
-#     except:
-#         pass
-#     axi.set_ylabel("D"+str(i))
-#     axi.set_ybound(-2.5, 2)
-
-# ax.set_ylabel("All")
-# ax.set_ybound(-2.5,2)
-
-
-# plt.show()
-
-
 
 #sudo code for finding wall segments:
 #Test in 1m blocks measured in x
@@ -238,12 +184,12 @@ allpoints = left_bank + right_bank
 
 #Time how long RANSAC algorithm takes
 start = tm.time()
+
 #List of regressed segments
 segments = []
 
 #Current value of X to base the "window" around
 x_current = 0
-
 
 #Allow some weirdness in not all data points being removed
 while len(right_bank)>20:
@@ -267,28 +213,6 @@ while len(right_bank)>20:
                                                 gap,
                                                 acceptance_ratio,
                                                 leftovers)
-
-    # print(len(segments), "\t", len(right_bank))
-
-    # for i in segments:
-    #     RS.plot_segment(i)
-
-    # plt.draw()
-    # plt.pause(.25)
-
-#  # [[x1,x2],[y1,y2]]
-#             segments.append([xs, ys]) #This line is wrong
-#             #remove the inliers from the RANSAC points
-#             RANSAC_points = outliers
-            
-#         #if there aren't many data points left, break    
-#         if(len(outliers) < 10):
-#             break
-
-#Find the segment points
-            # xs = np.array([min(np.array(inliers)[:,0]),max(np.array(inliers)[:,0])])
-            # ys = xs*a[0] + a[1]
-    #Increment to the next dataset
 
     x_current+=x_step
     
@@ -318,29 +242,9 @@ while len(left_bank)>20:
                                         leftovers)
     segments = segments_r + segments_l
 
-    # print(len(segments), "\t", len(left_bank))
-
-    # for i in segments:
-    #     RS.plot_segment(i)
-
-    # plt.draw()
-    # plt.pause(.25)
-
-#  # [[x1,x2],[y1,y2]]
-#             segments.append([xs, ys]) #This line is wrong
-#             #remove the inliers from the RANSAC points
-#             RANSAC_points = outliers
-            
-#         #if there aren't many data points left, break    
-#         if(len(outliers) < 10):
-#             break
-
-#Find the segment points
-            # xs = np.array([min(np.array(inliers)[:,0]),max(np.array(inliers)[:,0])])
-            # ys = xs*a[0] + a[1]
-    #Increment to the next dataset
-
     x_current+=x_step
+
+
 finish = tm.time()
 
 allpoints = np.array(allpoints)
@@ -364,14 +268,6 @@ plt.pause(.01)
 
 
 #Quantitative Evaluation
-#Sensor Data:
-#Point-Slope Form:
-#y=m(x-x1)+y1
-#Convert walls to point-slope line segments
-
-#Sensor data 
-#Bias
-#Standard Deviation
 
 left_bank  = RS.sort_points(points[0] + points[1] + points[2] + points[3])
 right_bank = RS.sort_points(points[4] + points[5] + points[6] + points[7])
@@ -409,9 +305,8 @@ def dist2walls(point):
 
 
 #find rms of the distances for the right bank:
-# print(len(right_bank))
 #find distance and square it (r)
-print("Raw Data Error:")
+print("\nRaw Data Error:")
 rms = 0
 for i in right_bank:
     rms += dist2walls(i)[0]**2

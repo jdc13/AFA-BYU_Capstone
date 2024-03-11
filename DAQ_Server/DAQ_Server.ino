@@ -132,7 +132,10 @@ void loop() {
   server.handleClient();
   delay(2);  
   
-    
+  //Need to implement bad data filtering. Criteria:
+  /* Needs to be farther than 90 cm away
+     Needs to be within 30 cm
+  */
   
 
 

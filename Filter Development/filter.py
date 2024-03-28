@@ -3,7 +3,7 @@
 
 import numpy as np
 import pandas as pd
-import controlers as ctrl
+# import controlers as ctrl
 import matplotlib.pyplot as plt
 import time as tm
 import RANSAC as RS
@@ -380,4 +380,5 @@ print("\t\tBias:\t", round(left_bias, 5), " m")
 print("\t\tSlope:\t", round(np.tan(left_slope_error)*180/np.pi, 5), "degrees")
     
 
-plt.waitforbuttonpress()
+# plt.waitforbuttonpress()
+plt.show()

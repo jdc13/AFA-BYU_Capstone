@@ -6,9 +6,7 @@ Description:  This code collects data from several sensors and posts 2D point cl
 */
 
 /*To Do:
-- Have WiFi access point running on one core while the sensor data is running on the second core.
-- Verify Sensor rates
-- Maybe add start button using built in on pin 38?
+
 */
 
 //Hardware Libraries
@@ -46,45 +44,45 @@ String buff_R; //Buffer for right (place data here if the main string is being u
 String buff_L; //Buffer for left (place data here if the main string is being used to transmit data)
 
 
-//Network Libraries
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WiFiAP.h>
-#include <WebServer.h>
+// //Network Libraries
+// #include <WiFi.h>
+// #include <WiFiClient.h>
+// #include <WiFiAP.h>
+// #include <WebServer.h>
 
 
-//Network Settings
-const char* SSID = "yourAP";
-// const char* Pswd = "1234"; //Using open network, no password
+// //Network Settings
+// const char* SSID = "yourAP";
+// // const char* Pswd = "1234"; //Using open network, no password
 
-//Initialize server
-WebServer server(80);
+// //Initialize server
+// WebServer server(80);
 
-void handleRoot() {
-  // digitalWrite(led, 1);
-  server.send(200, "text/plain",Bank_R + "\n" + Bank_L);
+// void handleRoot() {
+//   // digitalWrite(led, 1);
+//   server.send(200, "text/plain",Bank_R + "\n" + Bank_L);
   
-  Bank_R = "";
-  Bank_L = "";
-  // digitalWrite(led, 0);
-}
+//   Bank_R = "";
+//   Bank_L = "";
+//   // digitalWrite(led, 0);
+// }
 
-void handleNotFound() {
-  // digitalWrite(led, 1);
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-  for (uint8_t i = 0; i < server.args(); i++) {
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-  }
-  server.send(404, "text/plain", message);
-  // digitalWrite(led, 0);
-}
+// void handleNotFound() {
+//   // digitalWrite(led, 1);
+//   String message = "File Not Found\n\n";
+//   message += "URI: ";
+//   message += server.uri();
+//   message += "\nMethod: ";
+//   message += (server.method() == HTTP_GET) ? "GET" : "POST";
+//   message += "\nArguments: ";
+//   message += server.args();
+//   message += "\n";
+//   for (uint8_t i = 0; i < server.args(); i++) {
+//     message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+//   }
+//   server.send(404, "text/plain", message);
+//   // digitalWrite(led, 0);
+// }
 
 
 

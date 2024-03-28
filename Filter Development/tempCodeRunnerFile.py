@@ -1,5 +1,6 @@
-for i in segments:
-    #     RS.plot_segment(i)
-
-    # plt.draw()
-    # plt.pause(.25)
+for i in bld.walls:
+    bld.plot_wall(i)
+for i in bld.other:
+    bld.plot_wall(i)
+for i in bld.doors:
+    bld.plot_door(i)

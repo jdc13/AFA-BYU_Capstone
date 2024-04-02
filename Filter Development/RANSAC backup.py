@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import warnings
-import statistics as stat
 
 warnings.simplefilter('ignore', np.RankWarning) #RANSAC keeps triggering warnings from numpy's polyfit program. They are usually resolved after the 2nd iteration.
 
@@ -163,43 +162,35 @@ def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = 
         
         
         #Sort the inlier group based on x values for shallow slopes, and y values for steep slopes
-        if(abs(a[0])<2):
+        if(abs(a[1])<2):
             index = 0
         else:
             index = 1
-        # index = 0
         inliers = sort_points(inliers, index)
 
         wall = True #boolean to track whether or not we are in a wall
         #Search the inlier group for gaps along the index that was used for sorting
         start = inliers[0][0]
-        for i in range(len(inliers)-4):
-            if abs(stat.variance(inliers[i:i+4][index])) > gap:
-                #save the segment
-                segments.append(np.array([[start,            a[0]*start + a[1]],
-                                            [inliers[i][0],    a[0]*inliers[i][0]+a[1]]]))
-                # print("Gap")
-                start = inliers[i+4][0]
-                i += 4
+        for i in range(len(inliers)-2):
             
-            # if abs(inliers[i+1][index] - inliers[i][index]) > gap: #When a gap is found
-            #     if wall: #If we are tracking a wall:
-            #         #save the segment
-            #         segments.append(np.array([[start,            a[0]*start + a[1]],
-            #                                    [inliers[i][0],    a[0]*inliers[i][0]+a[1]]])
-            #                         )
-            #         #stop tracking a wall
-            #         wall = False
+            if inliers[i+1][index] - inliers[i][index] > gap: #When a gap is found
+                if wall: #If we are tracking a wall:
+                    #save the segment
+                    segments.append(np.array([[start,            a[0]*start + a[1]],
+                                               [inliers[i][0],    a[0]*inliers[i][0]+a[1]]])
+                                    )
+                    #stop tracking a wall
+                    wall = False
                 
-            #     else: #Tracking a gap
-            #         #Check the next point to make sure this measurement isn't noise in the data
-            #         if abs(inliers[i+2][index] - inliers[i+1][index]) < gap: #There is data close after this point
-            #             wall = True #Start tracking a wall
-            #             start = inliers[i][0] #Save the start of the wall
+                else: #Tracking a gap
+                    #Check the next point to make sure this measurement isn't noise in the data
+                    if inliers[i+2][index] - inliers[i+1][index] < gap: #There is data close after this point
+                        wall = True #Start tracking a wall
+                        start = inliers[i][0] #Save the start of the wall
         
-            #             segments.append(np.array([[start,            a[0]*start + a[1]],
-            #                                     [inliers[-1][0],    a[0]*inliers[-1][0]+a[1]]])
-                                    
+            segments.append(np.array([[start,            a[0]*start + a[1]],
+                                     [inliers[-1][0],    a[0]*inliers[-1][0]+a[1]]])
+                        )
         
     return(segments)
 

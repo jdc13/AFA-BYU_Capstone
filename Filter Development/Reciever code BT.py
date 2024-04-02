@@ -40,6 +40,9 @@ left_bank = []
 #Create empty lists for RANSAC output
 segments = []
 
+# empty list to store points
+all_points = []
+
 def parse_points(line):
     '''Take the raw line from a request and convert it into a list of points'''
     #Separate the lines into lists of points (Still strings)
@@ -52,14 +55,15 @@ def parse_points(line):
     for entry in line:
         pt = entry.split(delim_coord) #The point coordinates are split by a comma
         points.append(np.array([float(pt[0]), float(pt[1])])) #Parse the coordinates into floats and save them
-
+    global all_points
+    all_points = all_points + points
     return points
 
 
 while True:
     #Wait for data:
     print(ser.in_waiting)
-    while(ser.in_waiting < 1):
+    while(ser.in_waiting < 16):
         pass
     print("Have new data")
     print(ser.in_waiting)
@@ -81,33 +85,34 @@ while True:
 
         right_new = RS.sort_points(right_new)
         left_new = RS.sort_points(left_new)
-        
-        #If the smallest of the new points is larger than the current window, run RANSAC on the old points
-        if (right_new[0][0] > x_current) and (left_new[0][0] > x_current): 
-            segments = segments +  RS.RANSAC_Segments_2D(right_bank,
-                                                        threshold_r,
-                                                        ratio,
-                                                        gap,
-                                                        acceptance_ratio,
-                                                        leftovers)
-            segments = segments +  RS.RANSAC_Segments_2D(left_bank,
-                                                        threshold_r,
-                                                        ratio,
-                                                        gap,
-                                                        acceptance_ratio,
-                                                        leftovers)
-            #Reset the old points
-            right_bank = []
-            left_bank = []
-            x_current += x_step
-            
-            #Clear the figure and plot segments
-            plt.clf()
-            for i in segments:
-                RS.plot_segment(i)
-
-            plt.draw()
-            plt.pause(.01)
+        if(len(right_new) > 1 and len(left_new)>1):
+            #If the smallest of the new points is larger than the current window, run RANSAC on the old points
+            if (right_new[0][0] > x_current) and (left_new[0][0] > x_current): 
+                segments = segments +  RS.RANSAC_Segments_2D(right_bank,
+                                                            threshold_r,
+                                                            ratio,
+                                                            gap,
+                                                            acceptance_ratio,
+                                                            leftovers)
+                segments = segments +  RS.RANSAC_Segments_2D(left_bank,
+                                                            threshold_r,
+                                                            ratio,
+                                                            gap,
+                                                            acceptance_ratio,
+                                                            leftovers)
+                #Reset the old points
+                right_bank = []
+                left_bank = []
+                x_current += x_step
+                
+                #Clear the figure and plot segments
+                plt.clf()
+                for i in segments:
+                    RS.plot_segment(i)
+                # global all_points
+                plt.scatter(all_points[:][0], all_points[:][1])
+                plt.draw()
+                plt.pause(.01)
         #endif
             
         #After RANSAC, or if RANSAC wasn't ready, add new points to the sensor banks

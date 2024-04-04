@@ -31,7 +31,7 @@ float vectors[8][2] = {{.707, .707}, //Unit vectors to convert distance readings
                      {0, -1},
                      {0.5, -0.866},
                      {0.707, -0.707}};
-float speed = 10; //m/s
+float speed = 1; //m/s
 unsigned long start = 0;
 unsigned long end = 0;
 
@@ -93,7 +93,19 @@ void loop() {
           Bank_L = "";
           position = 0;     
   }
-  
+  if(SerialBT.available())  {
+    char signal = SerialBT.read();    
+    if(signal = 'r'){
+      Bank_R = "";
+      Bank_L = "";
+      position = 0; 
+      Serial.println("Soft Reset");
+      while(SerialBT.available()){
+        SerialBT.read();
+      }      
+
+    }
+  }
   //Check Distance Sensors
   //Left Bank
   for(int i = 1; i <=6; i++){

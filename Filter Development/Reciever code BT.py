@@ -7,6 +7,10 @@ import serial
 import numpy as np
 import matplotlib.pyplot as plt
 
+import keyboard as key
+import pandas as pd
+import os
+import datetime as date
 #import the RANSAC code
 import RANSAC as RS
 ser = serial.Serial("COM17", 115200, timeout=3)
@@ -18,10 +22,6 @@ delim_line = "l"
 
 
 #Parameters:
-x_step = 10# step to move through the code.
-
-
-
 
 print("Starting")
 #RANSAC parameters          Best Tested Value   #Explanation
@@ -30,19 +30,21 @@ ratio = .8                  #.8                 Initial ratio of inliers to outl
 gap = 1                     #1m               Standard deviation between n points to characterize a gap
 acceptance_ratio = .5       #.5                 min Number of inliers/outliers to accept a line
 leftovers = 40              #40                 Maximum number of outliers in the final iteration
-x_step = 10                 #10m                How much to increment the RANSAC window
+x_step = 2                 #10m                How much to increment the RANSAC window
 n = 4                       #4                  How many points to evaluate when trying to find a gap
 
 x_current = x_step
+
 #Create empty lists for the sensor banks
 right_bank = []
 left_bank = []
 
+#Empty list for all of the data
+all_points = []
 #Create empty lists for RANSAC output
 segments = []
 
-# empty list to store points
-all_points = []
+
 
 def parse_points(line):
     '''Take the raw line from a request and convert it into a list of points'''
@@ -60,7 +62,9 @@ def parse_points(line):
     all_points = all_points + points
     return points
 
-
+string =  "r"
+ser.write(string.encode('utf-8'))
+ser.readline() #remove the first line, which may have data from before the soft reset
 while True:
     #Wait for data:
     # print(ser.in_waiting)
@@ -82,6 +86,8 @@ while True:
         left_new = []
         right_new = right_new + parse_points(line_r)
         left_new = left_new + parse_points(line_l)
+
+        all_points = all_points + right_new + left_new
 
 
         right_new = RS.sort_points(right_new)
@@ -114,8 +120,8 @@ while True:
                 plt.clf()
                 for i in segments:
                     RS.plot_segment(i)
-                # global all_points
-                # plt.scatter(all_points[:][0], all_points[:][1])
+                ap = np.array(all_points)
+                plt.scatter(ap[:,0], ap[:,1])
                 plt.draw()
                 plt.pause(.01)
         #endif
@@ -124,17 +130,43 @@ while True:
         
         right_bank = right_bank + right_new
         left_bank = left_bank + left_new
-    
+
+    if(key.is_pressed("a")):
+        break
 
 
+print("Stopped")
+#Save the data
+now = date.datetime.now()
+test_dir = os.getcwd() + "\\Tests\\ " + str(now.month) + "-" + str(now.day) + "-" + str(now.year) + " " + str(now.hour) + "-" + str(now.minute) + "-" + str(now.second)
+os.mkdir(test_dir)
 
+segments_df = pd.DataFrame(columns=["x1", "y1", "x2", "y2"])
+for s in segments:
+    segments_df.loc[len(segments_df)] = list(np.concatenate(s,axis=0), )
+segments_df.to_csv(test_dir+"\\Segments.csv")
 
+point_df = pd.DataFrame(columns = ["x", "y"])
 
+for p in all_points:
+    point_df.loc[len(point_df)] = list(p)
 
+point_df.to_csv(test_dir+"\\Points.csv")
 
+#Save the figure as a svg
 
+#Clear the figure and plot any stragglers
+plt.clf()
+for i in segments:
+    RS.plot_segment(i)
+ap = np.array(all_points)
+plt.scatter(ap[:,0], ap[:,1])
 
+fig = plt.gcf()
 
+fig.savefig(test_dir + "\\figure.pdf",format="pdf" )
+
+plt.show()
 
 
 

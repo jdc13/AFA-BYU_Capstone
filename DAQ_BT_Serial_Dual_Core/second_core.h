@@ -29,7 +29,7 @@ void Task0Code(void * parameter){
   Serial.println("The device started, now you can pair it with bluetooth!");
   
   for(;;){
-    delay(100); //Small delay to make sure the other core can process.
+    delay(200); //Small delay to make sure the other core can process.
     while(dualCore::lock == true){
      Serial.println("Second core waiting on locked variables");
     }

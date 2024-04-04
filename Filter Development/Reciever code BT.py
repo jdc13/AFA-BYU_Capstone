@@ -25,12 +25,13 @@ x_step = 10# step to move through the code.
 
 print("Starting")
 #RANSAC parameters          Best Tested Value   #Explanation
-threshold_r = 1             #1m                 #maximum distance between regressed line and inliers
-ratio = 7                  #.8                 #Ratio of inliers to outliers in the initial run
-gap = .2                 #.01m               #minimum gap between points to be considered a gap in the wall
-acceptance_ratio = .9       #.7                 #Minimum ratio of inliers to outliers to accept a line
-leftovers = 10              #10                 #Maximum number of outliers to complete the RANSAC run
-x_step = 10                 #20                 #Step taken for the window.
+threshold_r = .5            #.5m                 Threshold used to define inliers
+ratio = .8                  #.8                 Initial ratio of inliers to outliers in the data
+gap = 1                     #1m               Standard deviation between n points to characterize a gap
+acceptance_ratio = .5       #.5                 min Number of inliers/outliers to accept a line
+leftovers = 40              #40                 Maximum number of outliers in the final iteration
+x_step = 10                 #10m                How much to increment the RANSAC window
+n = 4                       #4                  How many points to evaluate when trying to find a gap
 
 x_current = x_step
 #Create empty lists for the sensor banks
@@ -62,24 +63,24 @@ def parse_points(line):
 
 while True:
     #Wait for data:
-    print(ser.in_waiting)
+    # print(ser.in_waiting)
     while(ser.in_waiting < 16):
         pass
-    print("Have new data")
-    print(ser.in_waiting)
+    # print("Have new data")
+    # print(ser.in_waiting)
     bs = ser.readline().decode("utf-8")
-    print(bs)
+    # print(bs)
     if len(bs) > 8:
         lines = bs.split(delim_line)
 
         line_r = lines[0]
         line_l = lines[1]
-        print(line_l)
-        print(line_r)
+        # print(line_l)
+        # print(line_r)
 
         right_new = []
         left_new = []
-        right_new = right_new + (parse_points(line_r))
+        right_new = right_new + parse_points(line_r)
         left_new = left_new + parse_points(line_l)
 
 
@@ -93,16 +94,20 @@ while True:
                                                             ratio,
                                                             gap,
                                                             acceptance_ratio,
-                                                            leftovers)
+                                                            leftovers,
+                                                            n)
                 segments = segments +  RS.RANSAC_Segments_2D(left_bank,
                                                             threshold_r,
                                                             ratio,
                                                             gap,
                                                             acceptance_ratio,
-                                                            leftovers)
+                                                            leftovers,
+                                                            n)
                 #Reset the old points
                 right_bank = []
                 left_bank = []
+
+                #Increment window
                 x_current += x_step
                 
                 #Clear the figure and plot segments
@@ -110,7 +115,7 @@ while True:
                 for i in segments:
                     RS.plot_segment(i)
                 # global all_points
-                plt.scatter(all_points[:][0], all_points[:][1])
+                # plt.scatter(all_points[:][0], all_points[:][1])
                 plt.draw()
                 plt.pause(.01)
         #endif

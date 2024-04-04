@@ -1,6 +1,9 @@
 #This file is designed to be run on a computer, not on Circuit Python. 
 #Some dependencies need to be removed prior to implementation.
 
+
+
+#############This file is depreciated See overlaped.py################
 import numpy as np
 import pandas as pd
 # import controlers as ctrl

@@ -13,22 +13,27 @@ warnings.filterwarnings("ignore")
 
 import ClydeBldgLayout as bld
 
-#Import the dataset
-dataset = pd.read_excel("Dataset 2.xlsx","Sheet3")
+QE = True
 
-#RANSAC parameters          Best Tested Value
-threshold_r = 10             #1m
-ratio = .8                  #.8
-gap = .1                   #.01m
-acceptance_ratio = .7       #.7
-leftovers = 20              #10
-x_step = 10                 #20m
-overlap = 0                 #
+#Import the dataset
+dataset = pd.read_excel("Dataset 2.xlsx","Sheet1")
+
+#RANSAC parameters          Best Tested Value   Explanation
+threshold_r = .5            #.5m                 Threshold used to define inliers
+ratio = .8                  #.8                 Initial ratio of inliers to outliers in the data
+gap = 1                     #1m               Standard deviation between n points to characterize a gap
+acceptance_ratio = .5       #.5                 min Number of inliers/outliers to accept a line
+leftovers = 40              #40                 Maximum number of outliers in the final iteration
+x_step = 10                 #10m                How much to increment the RANSAC window
+n = 4                       #4                  How many points to evaluate when trying to find a gap
+overlap = 0                 #0                  distance to overlap between RANSAC points
+
 
 #Time, readings are in ns
 time = np.asarray(dataset["time"],float)
 time*=1e-9 #Convert to s
 t0 = time[0] #Save initial time
+
 
 #Sensor readings:
 #  Determine the sensor configuration, display in terminal and store sensor data in arrays for analysis
@@ -206,19 +211,21 @@ for side in sides: #Run the same code for each sensor bank.
             except:
                 pass
         #Copy overlap points back into the array:
-        # RANSAC_points = RS.sort_points(RANSAC_points)
-        # for point in RANSAC_points:
-        #     if(point[0] < x_current + x_step -overlap
-        #        and
-        #        point[0] > x_current):
-        #         right_bank.append(point)
+        RANSAC_points = RS.sort_points(RANSAC_points)
+        for point in RANSAC_points:
+            if(point[0] > x_current + x_step -overlap):
+            #    and
+            #    point[0] > x_current):
+                bank.append(point)
+                bank = RS.sort_points(bank)
 
         segments = segments + RS.RANSAC_Segments_2D(RANSAC_points, 
                                                     threshold_r,
                                                     ratio,
                                                     gap,
                                                     acceptance_ratio,
-                                                    leftovers)
+                                                    leftovers,
+                                                    n)
 
         
 
@@ -266,116 +273,117 @@ plt.pause(.1)
 
 #Quantitative Evaluation
 
-left_bank  = RS.sort_points(points[0] + points[1] + points[2] + points[3])
-right_bank = RS.sort_points(points[4] + points[5] + points[6] + points[7])
+if QE == True:
+    left_bank  = RS.sort_points(points[0] + points[1] + points[2] + points[3])
+    right_bank = RS.sort_points(points[4] + points[5] + points[6] + points[7])
 
-walls = bld.walls + bld.doors + bld.other
-m = 0
-def dist2walls(point):
-    dist = 1e10 #set initial distance to something stupid high so that the first reading is kept
-    for w in walls:
-        # print(round(w[0][0], 3), "\t", round(w[1][0],3))
-        if point[0] > w[0][0] and point[0] < w[1][0] \
-            or\
-            point[0] > w[1][0] and point[0] < w[0][0]:#if the point is within the boundary of the wall(in x direction) Check for both orientations of the wall
-            global m
-            m = (w[1][1]-w[0][1])/(w[1][0]-w[0][0]) #Find slope of wall
-            dist_current = (point[1]- (m*(point[0]-w[0][0]) + w[0][1])).item(0) #distance is the perpindicular distance to the wall
-            if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
-                dist = dist_current
-        elif point[1] > w[0][1] and point[1] < w[1][1]\
-             or\
-             point[1] > w[1][1] and point[1] < w[0][1]: #if the point is within the boundary of the wall in y direction, checking for both orientations of the wall
-            #Reverse x and y in point slope
-            m = (w[1][0]-w[0][0])/(w[1][1]-w[0][1]) #Find slope of wall
-            dist_current = (point[0]- (m*(point[1]-w[0][1]) + w[0][0])).item(0) #distance is the perpindicular distance to the wall
-            if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
-                dist = dist_current
-        else: #the point is not in any boundary of the wall. Check to the nearest corner
-            dist_current = np.sqrt((point[0]-w[0][0])**2 + (point[1]-w[0][1]**2))#Find the distance to one corner of the wall.
-            if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
-                dist = dist_current
-            dist_current = np.sqrt((point[0]-w[1][0])**2 + (point[1]-w[1][1]**2))#Find the distance to the other corner of the wall.
-            if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
-                dist = dist_current
-    return [dist, m]
-
-
-#find rms of the distances for the right bank:
-#find distance and square it (r)
-print("\nRaw Data Error:")
-rms = 0
-for i in right_bank:
-    rms += dist2walls(i)[0]**2
-#Find the mean of the squares (m)
-rms = rms/len(right_bank)
-#take the square root of the mean (s)
-rms = round(np.sqrt(rms),5)
-print("\tRight Bank RMS error:\t", rms, "m")
-rms_right = rms
-
-rms = 0
-for i in left_bank:
-    rms += dist2walls(i)[0]**2
-#Find the mean of the squares (m)
-rms = rms/len(right_bank)
-#take the square root of the mean (s)
-rms = np.sqrt(rms)
-print("\tLeft Bank RMS error:\t", round(rms, 5), "m")
-rms_left = rms
+    walls = bld.walls + bld.doors + bld.other
+    m = 0
+    def dist2walls(point):
+        dist = 1e10 #set initial distance to something stupid high so that the first reading is kept
+        for w in walls:
+            # print(round(w[0][0], 3), "\t", round(w[1][0],3))
+            if point[0] > w[0][0] and point[0] < w[1][0] \
+                or\
+                point[0] > w[1][0] and point[0] < w[0][0]:#if the point is within the boundary of the wall(in x direction) Check for both orientations of the wall
+                global m
+                m = (w[1][1]-w[0][1])/(w[1][0]-w[0][0]) #Find slope of wall
+                dist_current = (point[1]- (m*(point[0]-w[0][0]) + w[0][1])).item(0) #distance is the perpindicular distance to the wall
+                if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
+                    dist = dist_current
+            elif point[1] > w[0][1] and point[1] < w[1][1]\
+                or\
+                point[1] > w[1][1] and point[1] < w[0][1]: #if the point is within the boundary of the wall in y direction, checking for both orientations of the wall
+                #Reverse x and y in point slope
+                m = (w[1][0]-w[0][0])/(w[1][1]-w[0][1]) #Find slope of wall
+                dist_current = (point[0]- (m*(point[1]-w[0][1]) + w[0][0])).item(0) #distance is the perpindicular distance to the wall
+                if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
+                    dist = dist_current
+            else: #the point is not in any boundary of the wall. Check to the nearest corner
+                dist_current = np.sqrt((point[0]-w[0][0])**2 + (point[1]-w[0][1]**2))#Find the distance to one corner of the wall.
+                if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
+                    dist = dist_current
+                dist_current = np.sqrt((point[0]-w[1][0])**2 + (point[1]-w[1][1]**2))#Find the distance to the other corner of the wall.
+                if abs(dist_current)<abs(dist): #if this is smaller than other checked distances, save it.
+                    dist = dist_current
+        return [dist, m]
 
 
-print("\nRANSAC Performance:")
-print("\tElapsed time:\t", round(finish-start,5)) 
+    #find rms of the distances for the right bank:
+    #find distance and square it (r)
+    print("\nRaw Data Error:")
+    rms = 0
+    for i in right_bank:
+        rms += dist2walls(i)[0]**2
+    #Find the mean of the squares (m)
+    rms = rms/len(right_bank)
+    #take the square root of the mean (s)
+    rms = round(np.sqrt(rms),5)
+    print("\tRight Bank RMS error:\t", rms, "m")
+    rms_right = rms
 
-#RANSAC output error evaluation:
-#approach:
-#Calculate Bias of the line segments based on the mean distance to the walls over the line segment
-#Find average and standard deviation of the error in the angle between the wall and the RANSAC regressed segments
-print("\tRight Bank Output Error")
+    rms = 0
+    for i in left_bank:
+        rms += dist2walls(i)[0]**2
+    #Find the mean of the squares (m)
+    rms = rms/len(right_bank)
+    #take the square root of the mean (s)
+    rms = np.sqrt(rms)
+    print("\tLeft Bank RMS error:\t", round(rms, 5), "m")
+    rms_left = rms
 
-right_bias = []
-right_slope_error = []
 
-for s in segments_r:
-    center = [(s[0][0]+s[1][0])/2, (s[0][1] + s[1][1])/2]
-    dist, slope = dist2walls(center)
-    if(s[1][0]-s[0][0]) != 0:
-        # m_s = 1000
-        m_s = (s[1][1]-s[0][1])/(s[1][0]-s[0][0]) #Find slope of wall
-        right_slope_error.append(m_s-slope)
-    
-    right_bias.append(dist)
-    
-# print(right_slope_error)
-right_bias = np.mean(np.array(right_bias))
-right_slope_error = np.mean(np.array(right_slope_error))
+    print("\nRANSAC Performance:")
+    print("\tElapsed time:\t", round(finish-start,5)) 
 
-print("\t\tBias:\t", round(right_bias, 5), " m")
-print("\t\tSlope:\t", round(np.tan(right_slope_error)*180/np.pi, 5), "degrees")
+    #RANSAC output error evaluation:
+    #approach:
+    #Calculate Bias of the line segments based on the mean distance to the walls over the line segment
+    #Find average and standard deviation of the error in the angle between the wall and the RANSAC regressed segments
+    print("\tRight Bank Output Error")
 
-print("\tLeft Bank Output Error")
+    right_bias = []
+    right_slope_error = []
 
-left_bias = []
-left_slope_error = []
+    for s in segments_r:
+        center = [(s[0][0]+s[1][0])/2, (s[0][1] + s[1][1])/2]
+        dist, slope = dist2walls(center)
+        if(s[1][0]-s[0][0]) != 0:
+            # m_s = 1000
+            m_s = (s[1][1]-s[0][1])/(s[1][0]-s[0][0]) #Find slope of wall
+            right_slope_error.append(m_s-slope)
+        
+        right_bias.append(dist)
+        
+    # print(right_slope_error)
+    right_bias = np.mean(np.array(right_bias))
+    right_slope_error = np.mean(np.array(right_slope_error))
 
-for s in segments_l:
-    center = [(s[0][0]+s[1][0])/2, (s[0][1] + s[1][1])/2]
-    dist, slope = dist2walls(center)
-    if(s[1][0]-s[0][0]) != 0:
-        # m_s = 1000
-        m_s = (s[1][1]-s[0][1])/(s[1][0]-s[0][0]) #Find slope of wall
-        left_slope_error.append(m_s-slope)
-    
-    left_bias.append(dist)
-    
-# print(right_slope_error)
-left_bias = np.mean(np.array(left_bias))
-left_slope_error = np.mean(np.array(left_slope_error))
+    print("\t\tBias:\t", round(right_bias, 5), " m")
+    print("\t\tSlope:\t", round(np.tan(right_slope_error)*180/np.pi, 5), "degrees")
 
-print("\t\tBias:\t", round(left_bias, 5), " m")
-print("\t\tSlope:\t", round(np.tan(left_slope_error)*180/np.pi, 5), "degrees")
-    
+    print("\tLeft Bank Output Error")
 
-# plt.waitforbuttonpress()
+    left_bias = []
+    left_slope_error = []
+
+    for s in segments_l:
+        center = [(s[0][0]+s[1][0])/2, (s[0][1] + s[1][1])/2]
+        dist, slope = dist2walls(center)
+        if(s[1][0]-s[0][0]) != 0:
+            # m_s = 1000
+            m_s = (s[1][1]-s[0][1])/(s[1][0]-s[0][0]) #Find slope of wall
+            left_slope_error.append(m_s-slope)
+        
+        left_bias.append(dist)
+        
+    # print(right_slope_error)
+    left_bias = np.mean(np.array(left_bias))
+    left_slope_error = np.mean(np.array(left_slope_error))
+
+    print("\t\tBias:\t", round(left_bias, 5), " m")
+    print("\t\tSlope:\t", round(np.tan(left_slope_error)*180/np.pi, 5), "degrees")
+        
+
+    # plt.waitforbuttonpress()
 plt.show()

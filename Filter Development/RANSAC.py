@@ -144,7 +144,7 @@ def RANSAC_basic_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5):
     #will need to address this error case in final version of code
     TimeoutError
         
-def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = .5, leftovers = 20):
+def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = .5, leftovers = 20, n = 2):
     ''''Run Random Sample Consensus on a set of data points, and extract line segments\n
     This function will return a list of line segments in the form [array([[x1, y1],[x2, y2]]),...]\n
     RANSAC_points: A list of numpy arrays in the form [array([x1,y1]),array([x2,y2])...]\n
@@ -152,8 +152,14 @@ def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = 
     ratio: number of points in the inlier vs the outlier group in the initla iteration\n
     gap: distance between points that is considered a gap\n
     acceptance_ratio: minimum ratio of inliers/outliers required to accept the line\n
-    leftovers: The maximum number of outliers in the final iteration. A set of outliers larger than this number will triger a loop'''
+    leftovers: The maximum number of outliers in the final iteration. A set of outliers larger than this number will triger a loop
+    n: The number of points evaluated when looking for a gap'''
     segments = [] #list to store the line segments
+    
+    # gap = gap/(np.sqrt(n-1)) #Adjust the gap based on the number of points.
+    
+    n_round = 2 #Number of decimals to round to durring debug
+
     while(len(RANSAC_points) > leftovers):
         #Run RANSAC 
         a, inliers, RANSAC_points = RANSAC_basic_2D(RANSAC_points, 
@@ -161,52 +167,45 @@ def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = 
                                                     ratio, 
                                                     acceptance_ratio)
         
-        
         #Sort the inlier group based on x values for shallow slopes, and y values for steep slopes
         if(abs(a[0])<2):
             index = 0
         else:
             index = 1
         # index = 0
-        inliers = sort_points(inliers, index)
+        inliers = np.asanyarray(sort_points(inliers, index)) #Sort the inliers, and save them as a numpy array to find gaps
 
         wall = True #boolean to track whether or not we are in a wall
         #Search the inlier group for gaps along the index that was used for sorting
         start = inliers[0][0]
-        for i in range(len(inliers)-4):
-            if abs(stat.variance(inliers[i:i+4][index])) > gap:
+        
+        i = 0
+        while(i < len(inliers)-(n+1)):
+        # for i in range(len(inliers)-(n+1)):
+
+            if stat.stdev(inliers[i:i+n,index]) > gap:
+                
+                # print("X1 = ", round(inliers[i, 0], n_round))
+                # print("stdev = ", round(abs(stat.stdev(inliers[i:i+n,index])), n_round))
+                # print(np.around(inliers[i:i+n, index], n_round))
+                
                 #save the segment
                 segments.append(np.array([[start,            a[0]*start + a[1]],
                                             [inliers[i][0],    a[0]*inliers[i][0]+a[1]]]))
-                # print("Gap")
-                start = inliers[i+4][0]
-                i += 4
-            
-            # if abs(inliers[i+1][index] - inliers[i][index]) > gap: #When a gap is found
-            #     if wall: #If we are tracking a wall:
-            #         #save the segment
-            #         segments.append(np.array([[start,            a[0]*start + a[1]],
-            #                                    [inliers[i][0],    a[0]*inliers[i][0]+a[1]]])
-            #                         )
-            #         #stop tracking a wall
-            #         wall = False
                 
-            #     else: #Tracking a gap
-            #         #Check the next point to make sure this measurement isn't noise in the data
-            #         if abs(inliers[i+2][index] - inliers[i+1][index]) < gap: #There is data close after this point
-            #             wall = True #Start tracking a wall
-            #             start = inliers[i][0] #Save the start of the wall
-        
-            #             segments.append(np.array([[start,            a[0]*start + a[1]],
-            #                                     [inliers[-1][0],    a[0]*inliers[-1][0]+a[1]]])
-                                    
-        
+                
+                start = inliers[i+n+2][0]
+                # print("X2 = ", round(start, n_round), "\n")
+                
+                i += n+2
+            else:
+                if n/2 < 1:
+                    i +=1
+                else:
+                    i += int(n*2/3)
+
+        #Append the final segment
+        segments.append(np.array([[start,            a[0]*start + a[1]],
+                                            [inliers[-1][0],    a[0]*inliers[-1][0]+a[1]]]))
+             
     return(segments)
-
-
-def RANSAC_HO_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5, order = 1):
-    '''This function performs the RANSAC algorithm using higher order functions'''
-    pass
-
-                    
-

@@ -173,7 +173,7 @@ def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = 
         start = inliers[0][0]
         for i in range(len(inliers)-2):
             
-            if inliers[i+1][index] - inliers[i][index] > gap: #When a gap is found
+            if abs(inliers[i+1][index] - inliers[i][index]) > gap: #When a gap is found
                 if wall: #If we are tracking a wall:
                     #save the segment
                     segments.append(np.array([[start,            a[0]*start + a[1]],

@@ -167,14 +167,8 @@ def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = 
         i = 0
         while(i < len(inliers)-(n+1)):
         # for i in range(len(inliers)-(n+1)):
-            points_of_interest = np.array(inliers[i:i+n])
-            #Calculate the distance of each point to their geometric center:
-            geocenter = np.array([sum(points_of_interest[:,0])/n,
-                                  sum(points_of_interest[:,1])/n])
-            dists = np.sqrt(((points_of_interest[:,0]) - geocenter[0])**2 + ((points_of_interest[:,1])-geocenter[1])**2)
 
-
-            if stat.stdev(dists) > gap:
+            if stat.stdev(inliers[i:i+n,index]) > gap:
                 
                 # print("X1 = ", round(inliers[i, 0], n_round))
                 # print("stdev = ", round(abs(stat.stdev(inliers[i:i+n,index])), n_round))

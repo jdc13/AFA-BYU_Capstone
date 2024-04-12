@@ -13,7 +13,7 @@ Core 2 will handle transmission
 
 
 //Bad reading filtering parameters
-const float dist_min = .3;  //Minimum reading for a valid measurement
+const float dist_min = .7;  //Minimum reading for a valid measurement
 const float dist_var = .3;   //Maximum variation between distance readings for a given sensor
 float last_reading[8];       //Array to store last reading for each sensor
 

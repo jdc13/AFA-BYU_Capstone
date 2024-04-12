@@ -15,8 +15,6 @@ import datetime as date
 import RANSAC as RS
 ser = serial.Serial("COM3", 115200, timeout=3)
 
-speed = 16 #m/s
-
 #Deliminators:
 delim_coord = "c"
 delim_point = "p"
@@ -27,13 +25,20 @@ delim_line = "l"
 
 print("Starting")
 #RANSAC parameters          Best Tested Value   #Explanation
-threshold_r = .5            #.5m                 Threshold used to define inliers
-ratio = .8                  #.8                 Initial ratio of inliers to outliers in the data
-gap = 1                     #1m               Standard deviation between n points to characterize a gap
-acceptance_ratio = .5       #.5                 min Number of inliers/outliers to accept a line
-leftovers = 40              #40                 Maximum number of outliers in the final iteration
-x_step = 10                 #10m                How much to increment the RANSAC window
-n = 4                       #4                  How many points to evaluate when trying to find a gap
+# threshold_r = .1            #.5m                 Threshold used to define inliers
+# ratio = .6                  #.8                 Initial ratio of inliers to outliers in the data
+# gap = .7                     #1m               Standard deviation between n points to characterize a gap
+# acceptance_ratio = .1       #.5                 min Number of inliers/outliers to accept a line
+# leftovers = 40              #40                 Maximum number of outliers in the final iteration
+# x_step = 10                 #10m                How much to increment the RANSAC window
+# n = 4                       #4                  How many points to evaluate when trying to find a gap
+threshold_r = .08            #.5m          Threshold used to define inliers
+ratio = .8                  #.8            Initial ratio of inliers to outliers in the data
+gap = .2                     #1m            Standard deviation of distance between n points to characterize a gap
+acceptance_ratio = .6       #.5            min Number of inliers/outliers to accept a line
+leftovers = 4              #40             Maximum number of outliers in the final iteration
+x_step = 5               #10m            How much to increment the RANSAC window
+n = 4                      #4             How many points to evaluate when trying to find a gap
 
 x_current = x_step
 
@@ -62,30 +67,31 @@ def parse_points(line):
         points.append(np.array([float(pt[0]), float(pt[1])])) #Parse the coordinates into floats and save them
     global all_points
     all_points = all_points + points
+
+    #Remove points in the center band
+    len_original = len(points)
+    for i in range(len(points)):
+        if(abs(points[len_original-i-1][1]) < .28):
+            points.pop(len_original-i-1)
     return points
 
-string =  str(speed)
+string =  "r"
 ser.write(string.encode('utf-8'))
-
-for i in range(3):
-    ser.readline() #remove a few lines, which may have data from before the soft reset
-
+#remove the few lines, which may have data from before the soft reset
+ser.readline() 
+bs = ser.readline().decode("utf-8")
+bs = ser.readline().decode("utf-8")
 while True:
     #Wait for data:
-    # print(ser.in_waiting)
     while(ser.in_waiting < 16):
         pass
-    # print("Have new data")
-    # print(ser.in_waiting)
     bs = ser.readline().decode("utf-8")
-    # print(bs)
+
     if len(bs) > 8:
         lines = bs.split(delim_line)
 
         line_r = lines[0]
         line_l = lines[1]
-        # print(line_l)
-        # print(line_r)
 
         right_new = []
         left_new = []
@@ -99,6 +105,7 @@ while True:
 
         right_new = RS.sort_points(right_new)
         left_new = RS.sort_points(left_new)
+
         if(len(right_new) > 1 and len(left_new)>1):
             #If the smallest of the new points is larger than the current window, run RANSAC on the old points
             if (right_new[0][0] > x_current) and (left_new[0][0] > x_current): 

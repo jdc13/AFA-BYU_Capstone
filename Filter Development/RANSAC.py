@@ -75,10 +75,14 @@ def RANSAC_basic_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5):
     ratio: number of points in the inlier vs the outlier group\n
     acceptance_ratio: minimum ratio of inliers/outliers required to accept the line'''
     
-    for i in range(50): #time out after a large number of attempts
-        if(i==48):
-            print("WARNING: TOO MANY ATTEMPTS")#show warning if there have been too many iterations
-            exit()
+    # for i in range(1000): #time out after a large number of attempts
+    attempts = 0
+    while True:
+        attempts +=1
+        if(attempts==20):
+            print("Widening threshold")#show warning if there have been too many iterations
+            threshold = threshold + .01
+            attempts = 0
         
         #Scramble RANSAC list
         random.shuffle(RANSAC_points)

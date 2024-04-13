@@ -40,6 +40,9 @@ leftovers = 4              #40             Maximum number of outliers in the fin
 x_step = 5               #10m            How much to increment the RANSAC window
 n = 4                      #4             How many points to evaluate when trying to find a gap
 
+speed = 5
+
+
 x_current = x_step
 
 #Create empty lists for the sensor banks
@@ -63,8 +66,9 @@ def parse_points(line):
     points = []
     #Parse the strings into points
     for entry in line:
-        pt = entry.split(delim_coord) #The point coordinates are split by a comma
-        points.append(np.array([float(pt[0]), float(pt[1])])) #Parse the coordinates into floats and save them
+        pt = entry.split(delim_coord)
+        if abs(float(pt[1])) > .28:
+            points.append(np.array([float(pt[0]), float(pt[1])])) #Parse the coordinates into floats and save them
     global all_points
     all_points = all_points + points
 
@@ -75,7 +79,8 @@ def parse_points(line):
             points.pop(len_original-i-1)
     return points
 
-string =  "r"
+
+string =  str(speed)
 ser.write(string.encode('utf-8'))
 #remove the few lines, which may have data from before the soft reset
 ser.readline() 
@@ -83,9 +88,10 @@ bs = ser.readline().decode("utf-8")
 bs = ser.readline().decode("utf-8")
 while True:
     #Wait for data:
-    while(ser.in_waiting < 16):
+    while(ser.in_waiting < 8):
         pass
     bs = ser.readline().decode("utf-8")
+    # print(bs)
 
     if len(bs) > 8:
         lines = bs.split(delim_line)

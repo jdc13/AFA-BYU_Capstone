@@ -3,19 +3,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+from Parameters import *
+
 import RANSAC as RS
 
 test = "2"
 
 
 #RANSAC parameters          Best Tested Value   #Explanation
-threshold_r = .07            #.5m          Threshold used to define inliers
-ratio = .9                  #.8            Initial ratio of inliers to outliers in the data
-gap = .3                     #1m            Standard deviation of distance between n points to characterize a gap
-acceptance_ratio = .7       #.5            min Number of inliers/outliers to accept a line
-leftovers = 4              #40             Maximum number of outliers in the final iteration
-x_step = 5                #10m            How much to increment the RANSAC window
-n = 4                      #4             How many points to evaluate when trying to find a gap
+# threshold_r = .09            #.5m          Threshold used to define inliers
+# ratio = .8                  #.8            Initial ratio of inliers to outliers in the data
+# gap = .2                     #1m            Standard deviation of distance between n points to characterize a gap
+# acceptance_ratio = .8       #.5            min Number of inliers/outliers to accept a line
+# leftovers = 4              #40             Maximum number of outliers in the final iteration
+# x_step = 10                #10m            How much to increment the RANSAC window
+# n = 4                      #4             How many points to evaluate when trying to find a gap
 
 
 datasets = {"1": " 4-10-2024 9-9-12",
@@ -24,17 +26,20 @@ datasets = {"1": " 4-10-2024 9-9-12",
             "4": " 4-10-2024 9-13-47",
             "5": " 4-10-2024 9-21-7",
             "6": " 4-10-2024 9-21-23",
-            "7": " 4-10-2024 9-21-51"}
+            "7": " 4-10-2024 9-21-51",
+            "8": " 4-18-2024 10-20-55"}
 
 start =  {"2": 25,
           "3": 20,
           "4": 30,
-          "7": 10}
+          "7": 10,
+          "8": 78}
 
-cutoff = {"2": 45.5,
-          "3": 42.6,
-          "4": 45,
-          "7": 45}
+# cutoff = {"2": 45.5,
+        #   "3": 42.6,
+        #   "4": 45,
+        #   "7": 45,
+cutoff = {          "8": 175}
 
 num = len(cutoff)
 plot = 1
@@ -84,10 +89,10 @@ for test in cutoff:
             points = points[0:i-1]
             break
 
-
+    #Filter out bad data
     len_original = len(points)
     for i in range(len(points)):
-        if(abs(points[len_original-i-1][1]) < .28):
+        if(abs(points[len_original-i-1][1]) < .28 or abs(points[len_original-i-1][1]) > 2.15):
             points.pop(len_original-i-1)
 
 
@@ -105,9 +110,9 @@ for test in cutoff:
 
 
     tmp = np.asanyarray(left_bank)
-    plt.scatter(tmp[:,0], tmp[:,1])
+    plt.scatter(tmp[:,0], tmp[:,1],  label = "Left Bank")
     tmp = np.asanyarray(right_bank)
-    plt.scatter(tmp[:,0], tmp[:,1])
+    plt.scatter(tmp[:,0], tmp[:,1], label = "Right Bank")
 
     #Run RANSAC on filtered points
     position = 0
@@ -159,11 +164,15 @@ for test in cutoff:
 
         position = position + x_step
 
-
+    RS.plot_segment(segments[0], True)
     for s in segments:
         RS.plot_segment(s)
     plt.gca().set_aspect("equal")
     plt.title(datasets[test])
+    if test == "4":
+        plt.legend(loc = 'upper left', framealpha = 1)
+        plt.gca().set_xlim(17, 50)
+
 
 fig.tight_layout(pad = .5)
 plt.show()

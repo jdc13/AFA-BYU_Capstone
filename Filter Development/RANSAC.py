@@ -5,14 +5,18 @@ import matplotlib.pyplot as plt
 import random
 import warnings
 import statistics as stat
+from Parameters import *
 
 warnings.simplefilter('ignore', np.RankWarning) #RANSAC keeps triggering warnings from numpy's polyfit program. They are usually resolved after the 2nd iteration.
 
 
 
-def plot_segment(segment):
+def plot_segment(segment, legend = False):
     '''Function to plot the line segments'''
-    plt.plot(segment.T[0], segment.T[1], color = "k")
+    if legend == True:
+        plt.plot(segment.T[1], segment.T[0], color = "k", label = "RANSAC Segments")
+    else:
+        plt.plot(segment.T[1], segment.T[0], color = "k")
 
 def sort_points(data, index = 0):
     '''Sort a list of points (as numpy arrays) based on the x y or z coordinate \n
@@ -79,9 +83,12 @@ def RANSAC_basic_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5):
     attempts = 0
     while True:
         attempts +=1
-        if(attempts==20):
-            print("Widening threshold")#show warning if there have been too many iterations
-            threshold = threshold + .01
+        if(attempts==10):
+            # print("loosening parameters")
+            # print("Widening threshold")#show warning if there have been too many iterations
+            threshold = threshold + loosen_threshold
+            # print("Fewer points")
+            acceptance_ratio = acceptance_ratio - loosen_ratio
             attempts = 0
         
         #Scramble RANSAC list
@@ -89,10 +96,16 @@ def RANSAC_basic_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5):
         
         #Cut RANSAC list based on the ratio of points specified
         cut = int(len(RANSAC_points)*ratio)
-        inliers = RANSAC_points[0:cut]
-        outliers =RANSAC_points[cut:len(RANSAC_points)]
-        
 
+        #make sure that some points are put into the inlier group
+        if cut != 0:
+            inliers = RANSAC_points[0:cut]
+            outliers =RANSAC_points[cut:len(RANSAC_points)]
+        else:
+            inliers = RANSAC_points
+            outliers = []
+
+        #Set number of changes to something high so that the while loop runs at lesat once.
         n_changes = 100
         while(n_changes>0):
             
@@ -101,7 +114,10 @@ def RANSAC_basic_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5):
             tmp = np.array(inliers)
             if(len(inliers) < 1):
                 break
-            a = np.polyfit(tmp[:,0],tmp[:,1],1)
+            try:
+                a = np.polyfit(tmp[:,0],tmp[:,1],1)
+            except:
+                pass
             
 
             #Re-sort the points based on their proximity to the regression line and count the changes made.
@@ -125,13 +141,11 @@ def RANSAC_basic_2D(RANSAC_points, threshold, ratio, acceptance_ratio = .5):
                     pass
         
 
-        if len(inliers) > len(outliers)*acceptance_ratio:
+        # if len(inliers) > len(outliers)*acceptance_ratio:
+        if len(inliers)/(len(inliers) + len(outliers)) >= acceptance_ratio:
             #if there are a significant number of inliers, accept the segment
             return a, inliers, outliers
-        
-    #if time out
-    #will need to address this error case in final version of code
-    TimeoutError
+        pass
         
 def RANSAC_Segments_2D(RANSAC_points, threshold, ratio, gap, acceptance_ratio = .5, leftovers = 20, n = 2):
     ''''Run Random Sample Consensus on a set of data points, and extract line segments\n
